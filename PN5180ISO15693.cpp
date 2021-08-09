@@ -518,9 +518,19 @@ ISO15693ErrorCode PN5180ISO15693::issueISO15693Command(uint8_t *cmd, uint8_t cmd
   if (0 == (status & RX_SOF_DET_IRQ_STAT)) {
     return EC_NO_CARD;
   }
+
+  uint8_t counter = 0;
   while (0 == (status & RX_IRQ_STAT)) {
+    if (counter > 100)
+    {
+      Serial.println("Recovering");
+      return ISO15693_EC_UNKNOWN_ERROR;
+    }
+    
     delay(10);
+    Serial.println("In the loop");
     status = getIRQStatus();
+    counter++;
   }
 
   uint32_t rxStatus;
