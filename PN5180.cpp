@@ -532,15 +532,19 @@ bool PN5180::transceiveCommand(uint8_t *sendBuffer, size_t sendBufferLen, uint8_
 /*
  * Reset NFC device
  */
-void PN5180::reset() {
+bool PN5180::reset() {
   digitalWrite(PN5180_RST, LOW);  // at least 10us required
   delay(10);
   digitalWrite(PN5180_RST, HIGH); // 2ms to ramp up required
   delay(10);
 
-  while (0 == (IDLE_IRQ_STAT & getIRQStatus())); // wait for system to start up
+  unsigned long startedMillis = millis();
+  while (0 == (IDLE_IRQ_STAT & getIRQStatus()) && millis() - startedMillis < 1000); // wait for system to start up
+  bool failed = (0 == IDLE_IRQ_STAT & getIRQStatus());
 
   clearIRQStatus(0xffffffff); // clear all flags
+
+  return !failed;
 }
 
 /**
