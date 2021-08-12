@@ -21,6 +21,7 @@
 #include <Arduino.h>
 #include "PN5180.h"
 #include "Debug.h"
+#include "Timeout.h"
 
 // PN5180 1-Byte Direct Commands
 // see 11.4.3.3 Host Interface Command List
@@ -181,16 +182,16 @@ bool PN5180::readRegister(uint8_t reg, uint32_t *value) {
   PN5180DEBUG(F("...\n"));
 
   uint8_t cmd[2] = { PN5180_READ_REGISTER, reg };
-
+  
   SPI.beginTransaction(PN5180_SPI_SETTINGS);
-  transceiveCommand(cmd, 2, (uint8_t*)value, 4);
+  bool success = transceiveCommand(cmd, 2, (uint8_t*)value, 4);
   SPI.endTransaction();
 
   PN5180DEBUG(F("Register value=0x"));
   PN5180DEBUG(formatHex(*value));
   PN5180DEBUG("\n");
 
-  return true;
+  return success;
 }
 
 /*
@@ -411,8 +412,9 @@ bool PN5180::setRF_on() {
   SPI.beginTransaction(PN5180_SPI_SETTINGS);
   transceiveCommand(cmd, 2);
   SPI.endTransaction();
-
-  while (0 == (TX_RFON_IRQ_STAT & getIRQStatus())); // wait for RF field to set up
+  
+  bool success;
+  while (0 == (TX_RFON_IRQ_STAT & getIRQStatus(success))); // wait for RF field to set up
   clearIRQStatus(TX_RFON_IRQ_STAT);
   return true;
 }
@@ -431,7 +433,8 @@ bool PN5180::setRF_off() {
   transceiveCommand(cmd, 2);
   SPI.endTransaction();
 
-  while (0 == (TX_RFOFF_IRQ_STAT & getIRQStatus())); // wait for RF field to shut down
+  bool success;
+  while (0 == (TX_RFOFF_IRQ_STAT & getIRQStatus(success))); // wait for RF field to shut down
   clearIRQStatus(TX_RFOFF_IRQ_STAT);
   return true;
 }
@@ -485,7 +488,7 @@ bool PN5180::transceiveCommand(uint8_t *sendBuffer, size_t sendBufferLen, uint8_
 #endif
 
   // 0.
-  while (LOW != digitalRead(PN5180_BUSY)); // wait until busy is low
+  WHILETIMEOUT ((LOW != digitalRead(PN5180_BUSY)), 2000); // wait until busy is low
   // 1.
   digitalWrite(PN5180_NSS, LOW); delay(2);
   // 2.
@@ -493,11 +496,11 @@ bool PN5180::transceiveCommand(uint8_t *sendBuffer, size_t sendBufferLen, uint8_
     SPI.transfer(sendBuffer[i]);
   }
   // 3.
-  while(HIGH != digitalRead(PN5180_BUSY));  // wait until BUSY is high
+  WHILETIMEOUT((HIGH != digitalRead(PN5180_BUSY)), 2000);  // wait until BUSY is high
   // 4.
   digitalWrite(PN5180_NSS, HIGH); delay(1);
   // 5.
-  while (LOW != digitalRead(PN5180_BUSY)); // wait unitl BUSY is low
+  WHILETIMEOUT((LOW != digitalRead(PN5180_BUSY)), 2000); // wait unitl BUSY is low
 
   // check, if write-only
   //
@@ -511,11 +514,11 @@ bool PN5180::transceiveCommand(uint8_t *sendBuffer, size_t sendBufferLen, uint8_
     recvBuffer[i] = SPI.transfer(0xff);
   }
   // 3.
-  while(HIGH != digitalRead(PN5180_BUSY));  // wait until BUSY is high
+  WHILETIMEOUT((HIGH != digitalRead(PN5180_BUSY)), 2000);  // wait until BUSY is high
   // 4.
   digitalWrite(PN5180_NSS, HIGH); delay(1);
   // 5.
-  while(LOW != digitalRead(PN5180_BUSY));  // wait until BUSY is low
+  WHILETIMEOUT((LOW != digitalRead(PN5180_BUSY)), 2000);  // wait until BUSY is low
 
 #ifdef DEBUG
   PN5180DEBUG(F("Received: "));
@@ -532,30 +535,29 @@ bool PN5180::transceiveCommand(uint8_t *sendBuffer, size_t sendBufferLen, uint8_
 /*
  * Reset NFC device
  */
-bool PN5180::reset() {
+boolean PN5180::reset() {
   digitalWrite(PN5180_RST, LOW);  // at least 10us required
   delay(10);
   digitalWrite(PN5180_RST, HIGH); // 2ms to ramp up required
   delay(10);
 
-  unsigned long startedMillis = millis();
-  while (0 == (IDLE_IRQ_STAT & getIRQStatus()) && millis() - startedMillis < 1000); // wait for system to start up
-  bool failed = (0 == IDLE_IRQ_STAT & getIRQStatus());
+  bool success;
+  while (0 == (IDLE_IRQ_STAT & getIRQStatus(success)));
 
   clearIRQStatus(0xffffffff); // clear all flags
 
-  return !failed;
+  return success;
 }
 
 /**
  * @name  getInterrrupt
  * @desc  read interrupt status register and clear interrupt status
  */
-uint32_t PN5180::getIRQStatus() {
+uint32_t PN5180::getIRQStatus(bool &success) {
   PN5180DEBUG(F("Read IRQ-Status register...\n"));
 
   uint32_t irqStatus;
-  readRegister(IRQ_STATUS, &irqStatus);
+  success = readRegister(IRQ_STATUS, &irqStatus);
 
   PN5180DEBUG(F("IRQ-Status=0x"));
   PN5180DEBUG(formatHex(irqStatus));

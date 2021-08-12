@@ -190,7 +190,8 @@ iClassErrorCode PN5180iClass::issueiClassCommand(uint8_t *cmd, uint8_t cmdLen, u
   sendData(cmd, cmdLen);
   delay(10);
 
-  if (0 == (getIRQStatus() & RX_SOF_DET_IRQ_STAT)) {
+  bool success;
+  if (0 == (getIRQStatus(success) & RX_SOF_DET_IRQ_STAT)) {
     return EC_NO_CARD;
   }
 
@@ -221,7 +222,7 @@ iClassErrorCode PN5180iClass::issueiClassCommand(uint8_t *cmd, uint8_t cmdLen, u
   Serial.println();
 #endif
 
-  uint32_t irqStatus = getIRQStatus();
+  uint32_t irqStatus = getIRQStatus(success);
   if (0 == (RX_SOF_DET_IRQ_STAT & irqStatus)) { // no card detected
      clearIRQStatus(TX_IRQ_STAT | IDLE_IRQ_STAT);
      return EC_NO_CARD;

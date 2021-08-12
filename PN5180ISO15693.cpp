@@ -21,6 +21,7 @@
 #include <Arduino.h>
 #include "PN5180ISO15693.h"
 #include "Debug.h"
+#include "Timeout.h"
 
 PN5180ISO15693::PN5180ISO15693(uint8_t SSpin, uint8_t BUSYpin, uint8_t RSTpin)
               : PN5180(SSpin, BUSYpin, RSTpin) {
@@ -514,7 +515,8 @@ ISO15693ErrorCode PN5180ISO15693::issueISO15693Command(uint8_t *cmd, uint8_t cmd
 
   sendData(cmd, cmdLen);
   delay(10);
-  uint32_t status = getIRQStatus();
+  bool success;
+  uint32_t status = getIRQStatus(success);
   if (0 == (status & RX_SOF_DET_IRQ_STAT)) {
     return EC_NO_CARD;
   }
@@ -523,11 +525,13 @@ ISO15693ErrorCode PN5180ISO15693::issueISO15693Command(uint8_t *cmd, uint8_t cmd
   while (0 == (status & RX_IRQ_STAT)) {
     if (counter > 100)
     {
+      Serial.println("Recovering");
       return ISO15693_EC_UNKNOWN_ERROR;
     }
     
     delay(10);
-    status = getIRQStatus();
+    Serial.println("In the loop");
+    status = getIRQStatus(success);
     counter++;
   }
 
@@ -558,7 +562,7 @@ ISO15693ErrorCode PN5180ISO15693::issueISO15693Command(uint8_t *cmd, uint8_t cmd
   Serial.println();
 #endif
 
-  uint32_t irqStatus = getIRQStatus();
+  uint32_t irqStatus = getIRQStatus(success);
   if (0 == (RX_SOF_DET_IRQ_STAT & irqStatus)) { // no card detected
      clearIRQStatus(TX_IRQ_STAT | IDLE_IRQ_STAT);
      return EC_NO_CARD;

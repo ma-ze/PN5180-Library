@@ -119,7 +119,7 @@ public:
 public:
   bool reset();
 
-  uint32_t getIRQStatus();
+  uint32_t getIRQStatus(bool &success);
   bool clearIRQStatus(uint32_t irqMask);
 
   PN5180TransceiveStat getTransceiveState();
