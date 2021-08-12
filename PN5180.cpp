@@ -541,8 +541,8 @@ boolean PN5180::reset() {
   digitalWrite(PN5180_RST, HIGH); // 2ms to ramp up required
   delay(10);
 
-  bool success;
-  while (0 == (IDLE_IRQ_STAT & getIRQStatus(success)));
+  bool success = true;
+  while (0 == (IDLE_IRQ_STAT & getIRQStatus(success)) && success);
 
   clearIRQStatus(0xffffffff); // clear all flags
 
@@ -587,7 +587,8 @@ PN5180TransceiveStat PN5180::getTransceiveState() {
   uint32_t rfStatus;
   if (!readRegister(RF_STATUS, &rfStatus)) {
 #ifdef DEBUG
-    showIRQStatus(getIRQStatus());
+    bool sucess;
+    showIRQStatus(getIRQStatus(sucess));
 #endif
     PN5180DEBUG(F("ERROR reading RF_STATUS register.\n"));
     return PN5180TransceiveStat(0);
