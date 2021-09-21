@@ -44,7 +44,26 @@ PN5180::PN5180(uint8_t SSpin, uint8_t BUSYpin, uint8_t RSTpin) {
   PN5180_NSS = SSpin;
   PN5180_BUSY = BUSYpin;
   PN5180_RST = RSTpin;
-
+  //Using SCK, MISO and MOSI aliases for default pins on Arduino
+  PN5180_SCK = SCK;
+  PN5180_MISO = MISO;
+  PN5180_MOSI = MOSI;
+  /*
+   * 11.4.1 Physical Host Interface
+   * The interface of the PN5180 to a host microcontroller is based on a SPI interface,
+   * extended by signal line BUSY. The maximum SPI speed is 7 Mbps and fixed to CPOL
+   * = 0 and CPHA = 0.
+   */
+  // Settings for PN5180: 7Mbps, MSB first, SPI_MODE0 (CPOL=0, CPHA=0)
+  PN5180_SPI_SETTINGS = SPISettings(7000000, MSBFIRST, SPI_MODE0);
+}
+PN5180::PN5180(uint8_t SSpin, uint8_t BUSYpin, uint8_t RSTpin, uint8_t SCKpin, uint8_t MISOpin, uint8_t MOSIpin) {
+  PN5180_NSS = SSpin;
+  PN5180_BUSY = BUSYpin;
+  PN5180_RST = RSTpin;
+  PN5180_SCK = SCKpin;
+  PN5180_MISO = MISOpin;
+  PN5180_MOSI = MOSIpin;
   /*
    * 11.4.1 Physical Host Interface
    * The interface of the PN5180 to a host microcontroller is based on a SPI interface,
@@ -62,8 +81,13 @@ void PN5180::begin() {
 
   digitalWrite(PN5180_NSS, HIGH); // disable
   digitalWrite(PN5180_RST, HIGH); // no reset
-
-  SPI.begin();
+  #if defined(ARDUINO_ARCH_AVR)
+    SPI.begin();
+  #elif defined(ESP32)
+    SPI.begin(PN5180_SCK, PN5180_MISO, PN5180_MOSI, PN5180_NSS);
+  #else
+    #error architecture not supported
+  #endif
   PN5180DEBUG(F("SPI pinout: "));
   PN5180DEBUG(F("SS=")); PN5180DEBUG(SS);
   PN5180DEBUG(F(", MOSI=")); PN5180DEBUG(MOSI);

@@ -70,13 +70,17 @@ private:
   uint8_t PN5180_NSS;   // active low
   uint8_t PN5180_BUSY;
   uint8_t PN5180_RST;
+  uint8_t PN5180_SCK;
+  uint8_t PN5180_MISO;
+  uint8_t PN5180_MOSI;
 
   SPISettings PN5180_SPI_SETTINGS;
   static uint8_t readBuffer[508];
 
 public:
   PN5180(uint8_t SSpin, uint8_t BUSYpin, uint8_t RSTpin);
-
+  PN5180(uint8_t SSpin, uint8_t BUSYpin, uint8_t RSTpin, uint8_t SCKpin, uint8_t MISOpin, uint8_t MOSIpin);
+  
   void begin();
   void end();
 
